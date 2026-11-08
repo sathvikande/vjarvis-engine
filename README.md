@@ -30,13 +30,27 @@ The installer automatically:
 Analyze simulation logs, extract failing logic, generate the patch, and re-run verification in one command:
 
 ```bash
-# Set your Gemini API key (or configure local Ollama for air-gapped EDA servers)
-export GEMINI_API_KEY="your-api-key"
+# Option A: Using FreeLLMAPI (100% Free, multi-provider router running locally on port 3001)
+vjarvis auto \
+  --file path/to/axi_master_agent.sv \
+  --log simulation.log \
+  --rerun-cmd "vsim -c -do 'run -all; quit' tb_top" \
+  --provider freellmapi
 
+# Option B: Using Google Gemini API
+export GEMINI_API_KEY="your-api-key"
 vjarvis auto \
   --file path/to/axi_master_agent.sv \
   --log simulation.log \
   --rerun-cmd "vsim -c -do 'run -all; quit' tb_top"
+
+# Option C: Using local Ollama (air-gapped EDA servers)
+vjarvis auto \
+  --file path/to/axi_master_agent.sv \
+  --log simulation.log \
+  --rerun-cmd "vsim -c -do 'run -all; quit' tb_top" \
+  --provider ollama \
+  --model qwen2.5-coder
 ```
 
 ### 2. Transactional Code Patcher (`vjarvis patch`)

@@ -123,6 +123,52 @@ def call_ollama_local(
         raise
 
 
+def call_openai_compatible(
+    prompt: str,
+    base_url: str = "http://127.0.0.1:3001/v1",
+    api_key: str = "sk-freellmapi",
+    model: str = "default",
+) -> BrainTriagePayload:
+    """
+    Calls any OpenAI-compatible API endpoint, such as FreeLLMAPI, vLLM, or LM Studio.
+    """
+    url = f"{base_url.rstrip('/')}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": SYSTEM_MANIFEST},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.0,
+        "response_format": {"type": "json_object"},
+    }
+
+    try:
+        with httpx.Client(timeout=60.0) as client:
+            resp = client.post(url, headers=headers, json=body)
+            if resp.status_code != 200:
+                raise RuntimeError(
+                    f"OpenAI-compatible endpoint {url} returned HTTP {resp.status_code}: {resp.text}"
+                )
+
+            data = resp.json()
+            choices = data.get("choices", [])
+            if not choices:
+                raise RuntimeError("No choices returned from LLM provider.")
+
+            content = choices[0]["message"]["content"].strip()
+            clean_text = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.MULTILINE).strip()
+            parsed = json.loads(clean_text)
+            return BrainTriagePayload(**parsed)
+    except Exception as e:
+        logger.error("OpenAI-compatible/FreeLLMAPI call failed: %s", e)
+        raise
+
+
 def build_triage_prompt(log_content: str, target_file_path: Path) -> str:
     """
     Extracts relevant context from the error log and target source file.

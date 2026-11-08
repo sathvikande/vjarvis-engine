@@ -186,10 +186,19 @@ def main() -> None:
     auto_parser.add_argument("--file", "-f", required=True, type=Path, help="Target SystemVerilog/UVM source file")
     auto_parser.add_argument("--rerun-cmd", "-r", required=True, type=str, help="Simulation re-run command")
     auto_parser.add_argument("--log", "-l", type=Path, help="Path to simulation regression log file")
-    auto_parser.add_argument("--provider", choices=["gemini", "ollama"], default="gemini", help="AI provider (default: gemini)")
-    auto_parser.add_argument("--model", help="Model name (e.g. gemini-2.5-flash or qwen2.5-coder)")
-    auto_parser.add_argument("--api-key", help="API key (defaults to GEMINI_API_KEY environment variable)")
+    auto_parser.add_argument(
+        "--provider",
+        choices=["gemini", "ollama", "freellmapi", "openai"],
+        default="gemini",
+        help="AI provider (default: gemini)",
+    )
+    auto_parser.add_argument("--model", help="Model name (e.g. gemini-2.5-flash, qwen2.5-coder, or default)")
+    auto_parser.add_argument("--api-key", help="API key (defaults to GEMINI_API_KEY / OPENAI_API_KEY)")
     auto_parser.add_argument("--ollama-url", default="http://127.0.0.1:11434", help="Ollama endpoint URL")
+    auto_parser.add_argument(
+        "--endpoint",
+        help="Custom endpoint URL for FreeLLMAPI / OpenAI (default: http://127.0.0.1:3001/v1)",
+    )
     auto_parser.add_argument("--yes", "-y", action="store_true", help="Auto-approve patch without confirmation prompt")
     auto_parser.add_argument("--bridge-url", default="http://127.0.0.1:8000", help="FastAPI bridge server endpoint")
 
@@ -216,6 +225,7 @@ def main() -> None:
             build_triage_prompt,
             call_gemini_api,
             call_ollama_local,
+            call_openai_compatible,
         )
         import os
 
@@ -240,6 +250,14 @@ def main() -> None:
                     sys.exit(1)
                 model_name = args.model or "gemini-2.5-flash"
                 payload = call_gemini_api(prompt, api_key=api_key, model=model_name)
+            elif args.provider in ("freellmapi", "openai"):
+                endpoint = args.endpoint or os.environ.get(
+                    "FREELLMAPI_URL", "http://127.0.0.1:3001/v1" if args.provider == "freellmapi" else "https://api.openai.com/v1"
+                )
+                model_name = args.model or ("gpt-4o-mini" if args.provider == "openai" else "default")
+                api_key = args.api_key or os.environ.get("OPENAI_API_KEY", "sk-freellmapi")
+                print(f"Connecting to FreeLLMAPI/OpenAI endpoint: {endpoint} (model: {model_name})")
+                payload = call_openai_compatible(prompt, base_url=endpoint, api_key=api_key, model=model_name)
             else:
                 model_name = args.model or "qwen2.5-coder"
                 payload = call_ollama_local(prompt, base_url=args.ollama_url, model=model_name)
