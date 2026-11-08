@@ -10,7 +10,7 @@
 Clone the repository and run the installer on any Linux/macOS/WSL machine:
 
 ```bash
-git clone https://github.com/your-username/vjarvis-engine.git
+git clone https://github.com/AndeSanath/vjarvis-engine.git
 cd vjarvis-engine
 ./install.sh
 ```
